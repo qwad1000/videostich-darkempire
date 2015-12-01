@@ -1,0 +1,40 @@
+#include <stdio.h>
+#include <opencv2/opencv.hpp>
+#include <opencv2/stitching/stitcher.hpp>
+
+using namespace cv;
+using namespace std;
+
+
+int main()
+{
+    vector<Mat> vImg;
+    Mat rImg;
+
+    string path = "/home/qwad1000/workspace/ClionProjects/videostitch/stitching_img/";
+    vImg.push_back( imread(path + "S1.jpg") );
+    vImg.push_back( imread(path + "S2.jpg") );
+    vImg.push_back( imread(path + "S3.jpg") );
+
+    Stitcher stitcher = Stitcher::createDefault();
+
+
+    int64 BBtime = 0;
+    int64 AAtime = 0; //check processing time
+    AAtime = getTickCount(); //check processing time
+
+    Stitcher::Status status = stitcher.stitch(vImg, rImg);
+
+    BBtime = getTickCount(); //check processing time
+    printf("%.2lf sec \n",  (BBtime - AAtime)/getTickFrequency() ); //check processing time
+
+    if (Stitcher::OK == status) {
+        namedWindow("Stitching Result", WINDOW_NORMAL);
+        imshow("Stitching Result", rImg);
+    } else
+        printf("Stitching fail.");
+
+    waitKey(0);
+
+    return 0;
+}
