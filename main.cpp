@@ -45,7 +45,13 @@ int main(int argc, char *argv[]){
     }
 
     OpticalFlow opticalFlow(videoCapture);
-    opticalFlow.process();
+    auto x = opticalFlow.process2();
+    for(int i=0; i<x.images.size(); i++){
+        std::string writeName = "/home/qwad1000/test/" + std::to_string(i) + ".png";
+        imwrite(writeName, x.images[i]);
+        std::cout << i << "  " << x.imagesShifts[i] << std::endl;
+    }
+
     return 0;
 }
 

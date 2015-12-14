@@ -10,6 +10,19 @@
 
 using namespace cv;
 
+struct PanoParts {
+    std::vector<Mat> images;
+    std::vector<Point2f> imagesShifts;
+    std::vector<Point2f> imageFullShifts;
+
+
+    PanoParts(const std::vector<Mat> &images,
+              const std::vector<Point2f> &imagesShifts,
+              const std::vector<Point2f> &imageFullShifts) :
+            images(images), imagesShifts(imagesShifts), imageFullShifts(imageFullShifts)
+    { }
+};
+
 class OpticalFlow {
 private:
     VideoCapture _videoCapture;
@@ -19,8 +32,12 @@ public:
     OpticalFlow(VideoCapture videoCapture);
 
     void process();
+    PanoParts process2();
     Point2f findDirection(std::vector<Point> arrows);
-    Point2f createIm(InputOutputArray img, InputOutputArray img2);
+    Point2f createIm(const Mat &img, const _InputOutputArray &img2,
+                     const bool drawArrows = false);
+
+    std::vector<Point2f> findFeaturesToTrack(const Mat &img);
 };
 
 

@@ -15,13 +15,9 @@ OpticalFlow::OpticalFlow(VideoCapture videoCapture)
     _videoCapture = videoCapture;
 }
 
-Point2f OpticalFlow::createIm(InputOutputArray img, InputOutputArray img2) {
-
-    std::vector<Point2f> keypoints(_maxFeaturesCount);
-    Mat gray;
-    cvtColor(img, gray, CV_BGR2GRAY);
-
-    goodFeaturesToTrack(gray, keypoints, _maxFeaturesCount, 0.5, 1);
+Point2f OpticalFlow::createIm(const Mat &img, const InputOutputArray img2,
+                              const bool drawArrows) {
+    std::vector<Point2f> keypoints = findFeaturesToTrack(img);
 
     std::vector<uchar> status;
     std::vector<float> err;
@@ -29,16 +25,15 @@ Point2f OpticalFlow::createIm(InputOutputArray img, InputOutputArray img2) {
 
     std::vector<Point> arrows(keypoints.size());
 
-    for(int i=0; i<keypoints.size(); i++){
+    for (int i = 0; i < keypoints.size(); i++) {
         if (status[i] == 0) continue;
-        arrowedLine(img2, _prevPoints[i], keypoints[i], Scalar(255,0,0), 1);
+        if(drawArrows) arrowedLine(img2, _prevPoints[i], keypoints[i], Scalar(255, 0, 0), 1);
+
         arrows.push_back(_prevPoints[i] - keypoints[i]);
     }
 
-    Point2f shift = findDirection(arrows);
-
-//    _prevPoints = keypoints;
-    return shift;
+    _prevPoints = keypoints;
+    return findDirection(arrows);
 }
 
 void OpticalFlow::process() {
@@ -51,7 +46,7 @@ void OpticalFlow::process() {
     goodFeaturesToTrack(gray, _prevPoints, _maxFeaturesCount, 0.1, 1);
     Point2f shift;
     while(_videoCapture.read(img2)){
-        Point2f shift2 = createIm(img, img2);
+        Point2f shift2 = createIm(img, img2, true);
         shift += shift2;
         if(hypot(shift.x, shift.y) > 100)
             waitKey(0);
@@ -62,9 +57,60 @@ void OpticalFlow::process() {
 }
 
 Point2f OpticalFlow::findDirection(std::vector<Point> arrows) {
-    Point2f p =  std::accumulate(arrows.begin(), arrows.end(), Point(0, 0), [](const Point &p1, const Point &p2){
+    Point2f p =  std::accumulate(arrows.begin(), arrows.end(), Point(0, 0),
+                                 [](const Point &p1, const Point &p2){
         return p1 + p2;
     });
 
     return p/(int)arrows.size();
+}
+
+PanoParts OpticalFlow::process2() {
+    using namespace std;
+    Size videoSize = Size((int)_videoCapture.get(CAP_PROP_FRAME_WIDTH),
+                          (int)_videoCapture.get(CAP_PROP_FRAME_HEIGHT));
+    int minSize = min(videoSize.width, videoSize.height);
+
+    Mat img, img2, temp;
+    _videoCapture.read(img);
+
+    img.copyTo(temp);
+    vector<Mat> imagesToPano(1, temp);
+    Point2f shift, fullShift;
+    vector<Point2f> imagesShifts(1, shift);
+    vector<Point2f> imagesFullShifts(1, fullShift);
+
+    _prevPoints = findFeaturesToTrack(img);
+
+    while(_videoCapture.read(img2)){
+        Point2f currentShift = createIm(img, img2);
+        shift += currentShift;
+        fullShift += currentShift;
+//        std::cout<< currentShift << shift << fullShift << std::endl;
+        if(hypot(shift.x, shift.y) > minSize/2.0){
+            Mat temp2;
+            img2.copyTo(temp2);
+            imagesToPano.push_back(temp2);
+
+            imagesShifts.push_back(shift);
+            shift = Point2f(0,0);
+            imagesFullShifts.push_back(fullShift);
+
+            imshow("x", img2);
+//            waitKey(0);
+        }
+        img2.copyTo(img);
+    }
+
+    return PanoParts(imagesToPano, imagesShifts, imagesFullShifts);
+}
+
+std::vector<Point2f> OpticalFlow::findFeaturesToTrack(const Mat &img) {
+    Mat gray;
+    cvtColor(img, gray, CV_BGR2GRAY);
+    std::vector<Point2f> keypoints(_maxFeaturesCount);
+
+    goodFeaturesToTrack(gray, keypoints, _maxFeaturesCount, 0.5, 1);
+
+    return keypoints;
 }
