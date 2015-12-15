@@ -26,6 +26,7 @@ struct PanoParts {
 class OpticalFlow {
 private:
     VideoCapture _videoCapture;
+    const int MaxFeaturesCount = 100;
     int _maxFeaturesCount;
     std::vector<Point2f> _prevPoints;
 public:
